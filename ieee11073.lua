@@ -9,6 +9,7 @@
 --	0.0.2	Partial call outs for Ipfe0-33 data
 --	0.0.3	Bring out waveform samples for Ipfe0-33
 --	0.0.3a	Bring out waveform samples for ....
+--	0.0.3b	Improve handling of DescriptonHandle string
 
 -- Step 1 - document as you go. See header above and set_plugin_info().
 local IEEE11073_info =
@@ -379,7 +380,7 @@ function IEEE11073_p.dissector(tvbbuffer,pinfo,tree)
 			i, j, body_str = string.find(envelope_str, "<[%a%d%-]*:Body>(.-)</[%a%d%-]*:Body>")
 			if not body_str then 
 				body_str = ""
-				--debug(pinfo.number, "Body: ", body_str)
+				debug(pinfo.number, "Body: ", body_str)
 				--break 
 			end
 			
@@ -409,7 +410,7 @@ function IEEE11073_p.dissector(tvbbuffer,pinfo,tree)
 				if not mdibversion_report then
 					mdibversion_report = FieldNotPresent
 				end	
-				debug(pinfo.number, "mdibversion_report" .. counter, mdibversion_report)
+				debug(pinfo.number, "mdibversion_report: " .. counter, mdibversion_report)
 				sdctree:add(pf.report_mdib_version, mdibversion_report)
 			end	
 		end	
@@ -425,7 +426,7 @@ function IEEE11073_p.dissector(tvbbuffer,pinfo,tree)
 		if not mdibversion_report then
 			mdibversion_report = FieldNotPresent
 		end	
-		debug(pinfo.number, "mdibversion_report", mdibversion_report)
+		debug(pinfo.number, "mdibversion_report: ", mdibversion_report)
 		sdctree:add(pf.report_mdib_version, mdibversion_report)
 	end	
 	
@@ -435,18 +436,20 @@ function IEEE11073_p.dissector(tvbbuffer,pinfo,tree)
 		local waveformstree2 = subtree:add("IEEE11073 All Ipfe Devices")
 
 		debug(pinfo.number, "xml.body.len", string.len(body_str))
-		--{ut all the <state> fields in a table}
+		--{bring out all the <state> fields in a table}
 		local statearray = {}
 		for capture in string.gmatch(body_str, "<[%a%d-].-:State (.-)</[%a%d-]*:State>") do
 			table.insert(statearray, capture)
 		end
+		debug(pinfo.number, "Number of -state- entries found in WaveformReport: ", #statearray)
 		local ipfestatearray = {}
 		local ipfestatearray_adv = {}
 		local descriptorhandle, determinationtime, stateversion, validity, samples
 		local samples		--> string, space separated values
 		local samplestable = {}
 		for i = 1, #statearray do
-			descriptorhandle = string.match( statearray[i], 'DescriptorHandle="([%a%d-]+)"')
+			--descriptorhandle = string.match( statearray[i], 'DescriptorHandle="([%a%d-]+)"')
+			descriptorhandle = string.match( statearray[i], 'DescriptorHandle="([^"]+)')
 			determinationtime = string.match( statearray[i], 'DeterminationTime="([%d-]+)"')
 			stateversion = string.match( statearray[i], 'StateVersion="([%d-]+)"')
 			validity = string.match( statearray[i], 'Validity="([%a-]+)"')
